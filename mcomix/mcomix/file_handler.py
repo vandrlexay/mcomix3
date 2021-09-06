@@ -199,7 +199,11 @@ class FileHandler(object):
         if self.file_loaded or self.file_loading:
             if close_provider:
                 self._file_provider = None
-            self.update_last_read_page()
+
+            # if book was deleted do not store the last page
+            if os.path.isfile(self.get_path_to_base()):
+                self.update_last_read_page()
+
             if self.archive_type is not None:
                 self._extractor.close()
             self._window.imagehandler.cleanup()
@@ -447,14 +451,20 @@ class FileHandler(object):
 
         return self._window.imagehandler.get_pretty_current_filename()
 
-    def _open_next_archive(self, *args):
+    def _open_next_archive(self, oldFileList = None, *args):
         '''Open the archive that comes directly after the currently loaded
-        archive in that archive's directory listing, sorted alphabetically.
-        Returns True if a new archive was opened, False otherwise.
-        '''
+        archive in that archive's directory listing, sorted
+        alphabetically.  Returns True if a new archive was opened,
+        False otherwise. oldFileList is list of files used in case the
+        actualt directory was modified and yu need to keep file order
+        before that modification.'''
+
         if self.archive_type is not None:
 
-            files = self._file_provider.list_files(file_provider.FileProvider.ARCHIVES)
+            files = oldFileList
+            if not files:
+                files = self._file_provider.list_files(file_provider.FileProvider.ARCHIVES)
+
             absolute_path = os.path.abspath(self._base_path)
             if absolute_path not in files: return
             current_index = files.index(absolute_path)
@@ -467,14 +477,17 @@ class FileHandler(object):
 
         return False
 
-    def _open_previous_archive(self, *args):
+    def _open_previous_archive(self, oldFileList = None, *args):
         '''Open the archive that comes directly before the currently loaded
         archive in that archive's directory listing, sorted alphabetically.
         Returns True if a new archive was opened, False otherwise.
         '''
         if self.archive_type is not None:
 
-            files = self._file_provider.list_files(file_provider.FileProvider.ARCHIVES)
+            files = oldFileList
+            if not files:
+                files = self._file_provider.list_files(file_provider.FileProvider.ARCHIVES)
+
             absolute_path = os.path.abspath(self._base_path)
             if absolute_path not in files: return
             current_index = files.index(absolute_path)

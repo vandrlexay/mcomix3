@@ -64,6 +64,12 @@ class OpenWithCommand(object):
     def execute(self, window):
         ''' Spawns a new process with the given executable
         and arguments. '''
+
+        # save list of files in dir for case if executed command will
+        # modify it
+        file_list_before_command = window.filehandler._file_provider.list_files(
+            window.filehandler._file_provider.ARCHIVES)
+
         if (self.is_disabled_for_archives() and
             window.filehandler.archive_type is not None):
             window.osd.show(_('"%s" is disabled for archives.') % \
@@ -71,13 +77,14 @@ class OpenWithCommand(object):
             return
 
         current_dir = os.getcwd()
+        thread = None
         try:
             if self.is_valid_workdir(window):
                 workdir = self.parse(window, text=self.get_cwd())[0]
                 os.chdir(workdir)
 
             args = self.parse(window)
-            process.call_thread(args)
+            thread = process.call_thread(args)
 
         except Exception as e:
             text = _('Could not run command %(cmdlabel)s: %(exception)s') % \
@@ -85,6 +92,21 @@ class OpenWithCommand(object):
             window.osd.show(text)
         finally:
             os.chdir(current_dir)
+
+        if thread != None:
+            thread.join()
+            # if archive was moved or deleted by executed command open next one
+            if not os.path.isfile(window.filehandler._current_file):
+                if window.filehandler._open_next_archive(file_list_before_command):
+                    window.first_page()
+                # or previous one
+                else:
+                    if window.filehandler._open_previous_archive(file_list_before_command):
+                        window.first_page()
+                    # or just close the file
+                    else:
+                        window.filehandler.close_file()
+
 
     def is_executable(self, window):
         ''' Check if a name is executable. This name can be either

@@ -59,6 +59,8 @@ def call_thread(args):
                   args=(args,),kwargs=params,daemon=True)
     thread.start()
 
+    return thread
+
 if 'win32' == sys.platform:
     _exe_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 
